@@ -1,4 +1,5 @@
 # pagila-hw2
+[![](https://github.com/arushimalik/pagila-hw/workflows/tests/badge.svg)](https://github.com/arushimalik/pagila-hw/actions?query=workflow%3Atests)
 
 This is the second SQL homework in CMC's CSCI143: Big Data class.
 
