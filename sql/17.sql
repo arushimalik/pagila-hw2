@@ -9,16 +9,22 @@
  * <https://stackoverflow.com/a/5700744>.
  */
 
+WITH film_revenue AS (
+    SELECT
+        RANK() OVER (ORDER BY COALESCE(SUM(P.amount), 0) DESC) AS rank,
+        f.title,
+        ROUND(COALESCE(SUM(P.amount), 0), 2) AS revenue
+    FROM film f
+    LEFT JOIN inventory i ON f.film_id = i.film_id
+    LEFT JOIN rental r ON i.inventory_id = r.inventory_id
+    LEFT JOIN payment p ON r.rental_id = p.rental_id
+    GROUP BY f.film_id, f.title
+)
 SELECT
-    RANK() OVER (ORDER BY SUM(CASE WHEN P.amount IS NULL THEN 0.0 ELSE P.amount END) DESC) AS "rank",
-    F.title,
-    SUM(CASE WHEN P.amount IS NULL THEN 0.0 ELSE P.amount END) AS "revenue",
-    SUM(SUM(CASE WHEN P.amount IS NULL THEN 0.0 ELSE P.amount END))
-        OVER (ORDER BY SUM(CASE WHEN P.amount IS NULL THEN 0.0 ELSE P.amount END) DESC) AS "total revenue"
-FROM film F
-LEFT JOIN inventory I ON F.film_id = I.film_id
-LEFT JOIN rental R ON I.inventory_id = R.inventory_id
-LEFT JOIN payment P ON R.rental_id = P.rental_id
-GROUP BY F.title
-ORDER BY "revenue" DESC, title ASC;
+    rank,
+    title,
+    revenue,
+    SUM(revenue) OVER (ORDER BY rank) AS "total revenue"
+FROM film_revenue
+ORDER BY rank, title;
 
