@@ -8,22 +8,29 @@
  * See: <https://www.postgresql.org/docs/current/functions-formatting.html#FUNCTIONS-FORMATTING-EXAMPLES-TABLE>
  */
 
+WITH film_revenue AS (
+    SELECT
+        f.title AS title,
+        SUM(COALESCE(p.amount, 0.00)) AS revenue
+    FROM film f
+    LEFT JOIN inventory i ON f.film_id = i.film_id
+    LEFT JOIN rental r ON i.inventory_id = r.inventory_id
+    LEFT JOIN payment p ON r.rental_id = p.rental_id
+    GROUP BY f.title
+),
+film_rank AS (
+    SELECT
+        RANK() OVER (ORDER BY revenue DESC) AS rank,
+        title,
+        revenue,
+        SUM(revenue) OVER (ORDER BY revenue DESC) AS "total revenue"
+    FROM film_revenue
+)
 SELECT
-    RANK() OVER (ORDER BY SUM(CASE WHEN P.amount IS NULL THEN 0.0 ELSE P.amount END) DESC) AS "rank",
-    F.title,
-    SUM(CASE WHEN P.amount IS NULL THEN 0.0 ELSE P.amount END) AS revenue,
-    SUM(SUM(CASE WHEN P.amount IS NULL THEN 0.0 ELSE P.amount END))
-        OVER (ORDER BY SUM(CASE WHEN P.amount IS NULL THEN 0.0 ELSE P.amount END) DESC) AS "total revenue",
-    TO_CHAR(
-        100 * SUM(SUM(CASE WHEN P.amount IS NULL THEN 0.0 ELSE P.amount END))    
-        OVER (ORDER BY SUM(CASE WHEN P.amount IS NULL THEN 0.0 ELSE P.amount END) DESC)
-        / SUM(SUM(CASE WHEN P.amount IS NULL THEN 0.0 ELSE P.amount END)) OVER (),
-    'FM990.00'
-    ) AS "revenue percent"
-FROM film F
-LEFT JOIN inventory I ON F.film_id = I.film_id
-LEFT JOIN rental R ON I.inventory_id = R.inventory_id
-LEFT JOIN payment P ON R.rental_id = P.rental_id
-GROUP BY F.title
-ORDER BY revenue DESC, title ASC;
-
+    rank,
+    title,
+    revenue,
+    "total revenue",
+    TO_CHAR((100.0 * "total revenue") / NULLIF(SUM(revenue) OVER (), 0), 'FM900.00') AS "percent revenue"
+FROM film_rank
+ORDER BY revenue DESC, title;
